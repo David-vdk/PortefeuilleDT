@@ -252,11 +252,52 @@
         <label>Maandelijkse inleg
           <div class="proj-input-row"><span>€</span><input type="number" step="50" id="projInleg" value="0"></div>
         </label>
-        <label>Horizon
-          <div class="proj-input-row"><input type="number" step="1" id="projHorizon" value="10"><span>jaar</span></div>
+        <label>Doeljaar
+          <div class="proj-input-row"><input type="number" step="1" id="projDoeljaar" value="2036"></div>
+        </label>
+        <label>Inflatie/jaar
+          <div class="proj-input-row"><input type="number" step="0.1" id="projInflatie" value="2"><span>%</span></div>
         </label>
       </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--muted);">
+        <input type="checkbox" id="projTERToggle" checked style="width:16px;height:16px;flex:0 0 auto;">
+        <label for="projTERToggle" style="cursor:pointer;">Lopende kosten (TER) verrekenen <span id="projTERWeergave"></span></label>
+      </div>
       <div id="projectieChart" style="margin-top:14px;"></div>
+      <div id="projectieTooltip" class="verloop-tooltip" style="display:none;"></div>
+    </div>
+
+    <h2 class="sectiontitel">Opnamecalculator</h2>
+    <div class="card full">
+      <div class="sub" style="margin-bottom:12px;line-height:1.5;">
+        Hoeveel kan je maandelijks opnemen vanaf je doeljaar zonder dat je kapitaal op raakt? Op basis van het kapitaal uit de projectie hierboven, per scenario.
+      </div>
+      <div class="proj-inputs">
+        <label>Rendement tijdens opname/jaar
+          <div class="proj-input-row"><input type="number" step="0.1" id="opnameRendement" value="4"><span>%</span></div>
+        </label>
+        <label>Gewenste maandelijkse opname
+          <div class="proj-input-row"><span>€</span><input type="number" step="50" id="opnameGewenst" value="2000"></div>
+        </label>
+      </div>
+      <div id="opnameResultaat" style="margin-top:14px;"></div>
+    </div>
+
+    <h2 class="sectiontitel">En daarna?</h2>
+    <div class="card full">
+      <div class="sub" style="margin-bottom:10px;line-height:1.5;">
+        Verloop van je kapitaal ná je doeljaar, bij de hierboven ingestelde opname. Vlak = houdbaar, dalend = wordt opgebruikt, stijgend = blijft groeien.
+      </div>
+      <div id="endaarnaChart"></div>
+    </div>
+
+    <h2 class="sectiontitel">Omgekeerde doelcalculator</h2>
+    <div class="card full">
+      <div class="sub" style="margin-bottom:12px;line-height:1.5;">
+        Hoeveel kapitaal en maandelijkse inleg heb je nodig om de gewenste opname hierboven (in geld van vandaag) te halen tegen je doeljaar?
+      </div>
+      <div id="doelResultaat"></div>
+      <button class="btn secondary small" id="btnPasInlegToe" style="margin-top:12px;width:100%;">Pas nodige inleg toe op projectie</button>
     </div>
   </div>
 </section>
@@ -356,6 +397,23 @@ const NAAM_ISIN = [
   [/XTR MSCI WORLD MOMENTUM/i, 'IE00BL25JP72'],
   [/XTR\.?\(IE\)MSCI WORLD VALUE/i, 'IE00BL25JM42'],
 ];
+
+/* Lopende kosten (TER, % per jaar) per fonds -- gebruikt om de projectie realistischer te maken */
+const FONDS_TER = {
+  'IE00BF4RFH31': 0.35,  // IUSN
+  'IE00BKM4GZ66': 0.18,  // EMIM
+  'IE00BSPLC298': 0.30,  // ZPRX
+  'IE00BSPLC413': 0.30,  // ZPRV
+  'IE00B48X4842': 0.55,  // SPYX
+  'IE00BL25JP72': 0.25,  // XDEM
+  'IE00BL25JM42': 0.25,  // XDEV
+};
+function berekenGewogenTER(){
+  const posities = berekenPosities();
+  const totWaarde = posities.reduce((s,p)=>s+p.huidigeWaarde,0);
+  if (!totWaarde) return 0;
+  return posities.reduce((s,p)=> s + (FONDS_TER[p.isin]||0) * p.huidigeWaarde, 0) / totWaarde;
+}
 
 /* Doelverdeling zoals opgegeven door de gebruiker (som = 100%) */
 const DEFAULT_TARGETS = {
@@ -853,15 +911,28 @@ function wisselTab(naam){
   document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
   document.getElementById('sec-'+naam).classList.add('active');
   if (naam==='allocatie') renderAllocatie();
-  if (naam==='groei'){ renderWaardeverloop(); renderProjectie(); }
+  if (naam==='groei'){ renderWaardeverloop(); renderAlleProjectieKaarten(); }
   if (naam==='rekeningen') renderRekeningen();
 }
 document.querySelectorAll('.tab, .navbtn').forEach(el=>{
   el.addEventListener('click', ()=>wisselTab(el.dataset.tab));
 });
 
-['projRendement','projBand','projInleg','projHorizon'].forEach(id=>{
-  document.getElementById(id).addEventListener('input', renderProjectie);
+document.getElementById('projDoeljaar').value = new Date().getFullYear() + 10;
+
+['projRendement','projBand','projInleg','projDoeljaar','projInflatie','opnameRendement','opnameGewenst'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', renderAlleProjectieKaarten);
+});
+document.getElementById('projTERToggle').addEventListener('change', renderAlleProjectieKaarten);
+document.getElementById('btnPasInlegToe').addEventListener('click', ()=>{
+  const r = berekenDoelcalculator();
+  if (isFinite(r.benodigdeInleg) && r.benodigdeInleg>0){
+    document.getElementById('projInleg').value = Math.round(r.benodigdeInleg);
+    renderAlleProjectieKaarten();
+    toast('Maandelijkse inleg toegepast op projectie');
+  } else {
+    toast('Geen extra inleg nodig — je zit al op koers');
+  }
 });
 
 document.getElementById('detailBack').addEventListener('click', sluitFondsDetail);
@@ -1137,10 +1208,22 @@ function renderWaardeverloop(){
   const benchmarkRuw = TOON_BENCHMARK ? berekenBenchmarkReeks(reeks.datums) : null;
   const heeftBenchmark = benchmarkRuw && benchmarkRuw.every(v=>v!==null);
 
-  const maxY = Math.max(...waardes, ...ingelegdVals, ...(heeftBenchmark?benchmarkRuw:[0])) * 1.08 || 1;
+  const alleWaarden = [...waardes, ...ingelegdVals, ...(heeftBenchmark?benchmarkRuw:[])];
+  const AUTO_SCALE_PERIODES = ['1m','6m','1j'];
+  let minY, maxY;
+  if (AUTO_SCALE_PERIODES.includes(WAARDEVERLOOP_PERIODE)){
+    const dataMin = Math.min(...alleWaarden);
+    const dataMax = Math.max(...alleWaarden);
+    const span = (dataMax - dataMin) || dataMax || 1;
+    minY = Math.max(0, dataMin - span*0.1);
+    maxY = dataMax + span*0.1;
+  } else {
+    minY = 0;
+    maxY = Math.max(...alleWaarden) * 1.08 || 1;
+  }
 
   const xFn = i => PAD_L + (i/(n-1)) * (W-PAD_L-PAD_R);
-  const yFn = v => (H-PAD_B) - (v/maxY) * (H-PAD_T-PAD_B);
+  const yFn = v => (H-PAD_B) - ((v-minY)/((maxY-minY)||1)) * (H-PAD_T-PAD_B);
 
   const pathWaarde = waardes.map((v,i)=> `${i===0?'M':'L'} ${xFn(i).toFixed(1)} ${yFn(v).toFixed(1)}`).join(' ');
   const pathIngelegd = ingelegdVals.map((v,i)=> `${i===0?'M':'L'} ${xFn(i).toFixed(1)} ${yFn(v).toFixed(1)}`).join(' ');
@@ -1169,7 +1252,7 @@ function renderWaardeverloop(){
       <line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H-PAD_B}" stroke="#2b3542" stroke-width="1"/>
       <line x1="${PAD_L}" y1="${H-PAD_B}" x2="${W-PAD_R}" y2="${H-PAD_B}" stroke="#2b3542" stroke-width="1"/>
       <text x="2" y="${PAD_T+8}" fill="#8a97a5" font-size="9">${fmtEURKort(maxY)}</text>
-      <text x="2" y="${H-PAD_B}" fill="#8a97a5" font-size="9">€0</text>
+      <text x="2" y="${H-PAD_B}" fill="#8a97a5" font-size="9">${fmtEURKort(minY)}</text>
       <path d="${pathIngelegd}" fill="none" stroke="#8a97a5" stroke-width="1.5" stroke-dasharray="4 3"/>
       ${heeftBenchmark ? `<path d="${pathBenchmark}" fill="none" stroke="#6b93d9" stroke-width="1.75" stroke-dasharray="1 3"/>` : ''}
       <path d="${pathWaarde}" fill="none" stroke="#d9a441" stroke-width="2"/>
@@ -1491,9 +1574,17 @@ function berekenProjectie(){
   const rendVerwacht = (parseFloat(document.getElementById('projRendement').value) || 0)/100;
   const band = (parseFloat(document.getElementById('projBand').value) || 0)/100;
   const maandInleg = parseFloat(document.getElementById('projInleg').value) || 0;
-  const jaren = Math.max(1, parseInt(document.getElementById('projHorizon').value) || 1);
+  const huidigJaar = new Date().getFullYear();
+  const doeljaar = Math.max(huidigJaar+1, parseInt(document.getElementById('projDoeljaar').value) || huidigJaar+10);
+  const jaren = doeljaar - huidigJaar;
 
-  const scenarios = { pess: rendVerwacht-band, verw: rendVerwacht, opt: rendVerwacht+band };
+  const terToggle = document.getElementById('projTERToggle').checked;
+  const terPct = terToggle ? berekenGewogenTER() : 0;
+  const ter = terPct/100;
+  const terEl = document.getElementById('projTERWeergave');
+  if (terEl) terEl.textContent = terPct>0 ? `(gewogen TER: ${terPct.toFixed(2).replace('.',',')}%/jaar)` : '';
+
+  const scenarios = { pess: rendVerwacht-band-ter, verw: rendVerwacht-ter, opt: rendVerwacht+band-ter };
   const punten = { pess:[], verw:[], opt:[] };
 
   Object.keys(scenarios).forEach(key=>{
@@ -1506,13 +1597,13 @@ function berekenProjectie(){
       punten[key].push(Math.max(0,fv));
     }
   });
-  return { punten, jaren, startWaarde: totWaarde };
+  return { punten, jaren, doeljaar, huidigJaar, startWaarde: totWaarde, scenarios };
 }
 
 function renderProjectie(){
   const container = document.getElementById('projectieChart');
   if (!container) return;
-  const { punten, jaren, startWaarde } = berekenProjectie();
+  const { punten, jaren, doeljaar, huidigJaar, startWaarde } = berekenProjectie();
 
   const W=600, H=240, PAD_L=48, PAD_R=10, PAD_T=14, PAD_B=26;
   const n = jaren+1;
@@ -1529,24 +1620,240 @@ function renderProjectie(){
   const eindPess = punten.pess[punten.pess.length-1];
 
   container.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 ${W} ${H}" id="projSvg" style="width:100%;touch-action:none;display:block;cursor:pointer;" xmlns="http://www.w3.org/2000/svg">
       <line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H-PAD_B}" stroke="#2b3542" stroke-width="1"/>
       <line x1="${PAD_L}" y1="${H-PAD_B}" x2="${W-PAD_R}" y2="${H-PAD_B}" stroke="#2b3542" stroke-width="1"/>
       <text x="2" y="${PAD_T+8}" fill="#8a97a5" font-size="9">${fmtEURKort(maxY)}</text>
       <text x="2" y="${H-PAD_B}" fill="#8a97a5" font-size="9">€0</text>
-      <text x="${PAD_L}" y="${H-8}" fill="#8a97a5" font-size="9">nu</text>
-      <text x="${W-PAD_R-24}" y="${H-8}" fill="#8a97a5" font-size="9">+${jaren}j</text>
+      <text x="${PAD_L}" y="${H-8}" fill="#8a97a5" font-size="9">${huidigJaar}</text>
+      <text x="${W-PAD_R-24}" y="${H-8}" fill="#8a97a5" font-size="9">${doeljaar}</text>
       <path d="${bandBoven} ${bandOnder} Z" fill="#d9a441" opacity="0.12"/>
       <path d="${bandBoven}" fill="none" stroke="#d9a441" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>
       <path d="${lijnVerw}" fill="none" stroke="#d9a441" stroke-width="2.5"/>
       <path d="M ${bandOnder.replace(/^L/,'').trim()}" fill="none" stroke="#d9a441" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>
+      <g id="projCrosshair" style="display:none;">
+        <line id="projCrosshairLine" x1="0" y1="${PAD_T}" x2="0" y2="${H-PAD_B}" stroke="#e9edf1" stroke-width="1" stroke-dasharray="2 2"/>
+        <circle id="projDot" r="3.5" fill="#d9a441"/>
+      </g>
     </svg>
     <div class="proj-legend">
       <span><i style="background:#d9a441;"></i> Verwacht: ${fmtEUR(eindVerw)}</span>
       <span style="opacity:0.7;">Optimistisch: ${fmtEUR(eindOpt)}</span>
       <span style="opacity:0.7;">Pessimistisch: ${fmtEUR(eindPess)}</span>
     </div>
-    <div class="sub" style="margin-top:8px;">Startpunt: ${fmtEUR(startWaarde)} vandaag${document.getElementById('projInleg').value>0 ? ` + € ${document.getElementById('projInleg').value}/maand` : ''}</div>`;
+    <div class="sub" style="margin-top:8px;">Startpunt: ${fmtEUR(startWaarde)} vandaag${document.getElementById('projInleg').value>0 ? ` + € ${document.getElementById('projInleg').value}/maand` : ''} · tik op de grafiek voor een jaar in geld van vandaag</div>`;
+
+  koppelProjSleeplijn(document.getElementById('projSvg'), punten, xFn, yFn, PAD_L, PAD_R, W, huidigJaar);
+}
+
+function koppelProjSleeplijn(svg, punten, xFn, yFn, PAD_L, PAD_R, VIEWBOX_W, huidigJaar){
+  if (!svg) return;
+  const n = punten.verw.length;
+  const tooltip = document.getElementById('projectieTooltip');
+  const crosshair = document.getElementById('projCrosshair');
+  const line = document.getElementById('projCrosshairLine');
+  const dot = document.getElementById('projDot');
+  const inflatie = (parseFloat(document.getElementById('projInflatie').value) || 0)/100;
+
+  function toon(i){
+    i = Math.max(0, Math.min(n-1, i));
+    const waarde = punten.verw[i];
+    const xp = xFn(i), yp = yFn(waarde);
+    crosshair.style.display = 'block';
+    line.setAttribute('x1', xp); line.setAttribute('x2', xp);
+    dot.setAttribute('cx', xp); dot.setAttribute('cy', yp);
+    const vandaagWaarde = waarde / Math.pow(1+inflatie, i);
+    tooltip.style.display = 'block';
+    tooltip.innerHTML = `
+      <div class="vt-datum">${huidigJaar + i}</div>
+      <div class="vt-waarde">${fmtEUR(waarde)}</div>
+      <div class="sub">in geld van vandaag: <b style="color:var(--text);">${fmtEUR(vandaagWaarde)}</b></div>`;
+  }
+
+  function xNaarIndex(clientX){
+    const rect = svg.getBoundingClientRect();
+    const relX = (clientX - rect.left) / rect.width * VIEWBOX_W;
+    const frac = (relX - PAD_L) / (VIEWBOX_W - PAD_L - PAD_R);
+    return Math.round(frac * (n-1));
+  }
+
+  let bezig = false;
+  svg.onpointerdown = e=>{ bezig=true; toon(xNaarIndex(e.clientX)); svg.setPointerCapture(e.pointerId); };
+  svg.onpointermove = e=>{ if(bezig) toon(xNaarIndex(e.clientX)); };
+  svg.onpointerup = ()=>{ bezig=false; };
+  svg.onpointercancel = ()=>{ bezig=false; };
+
+  toon(n-1);
+}
+
+/* ============ OPNAMECALCULATOR ============ */
+function annuiteitDuur(kapitaal, maandelijkseOpname, maandRente){
+  // Aantal maanden dat kapitaal meegaat bij vaste maandelijkse opname.
+  // Infinity = opname is kleiner dan (of gelijk aan) de rente-opbrengst -> kapitaal blijft behouden.
+  if (kapitaal <= 0) return 0;
+  if (maandelijkseOpname <= 0) return Infinity;
+  if (maandRente <= 0) return kapitaal / maandelijkseOpname;
+  if (maandelijkseOpname <= kapitaal * maandRente) return Infinity;
+  const teller = Math.log(1 - (kapitaal*maandRente)/maandelijkseOpname);
+  const noemer = Math.log(1+maandRente);
+  return -teller/noemer;
+}
+
+function renderOpnameCalculator(){
+  const el = document.getElementById('opnameResultaat');
+  if (!el) return;
+  const { punten, doeljaar } = berekenProjectie();
+  const rendOpname = (parseFloat(document.getElementById('opnameRendement').value) || 0)/100;
+  const opnameGewenst = parseFloat(document.getElementById('opnameGewenst').value) || 0;
+  const rMaand = Math.pow(1+rendOpname, 1/12) - 1;
+
+  const scenarioLabels = { pess:'Pessimistisch', verw:'Verwacht', opt:'Optimistisch' };
+  el.innerHTML = ['pess','verw','opt'].map(key=>{
+    const kapitaal = punten[key][punten[key].length-1];
+    const maanden = annuiteitDuur(kapitaal, opnameGewenst, rMaand);
+    let verdict, kleur;
+    if (maanden === Infinity){ verdict='blijft behouden'; kleur='pos-up'; }
+    else {
+      const jarenDuur = maanden/12;
+      if (jarenDuur > 100){ verdict='gaat >100 jaar mee'; kleur='pos-up'; }
+      else { verdict=`leeg na ±${jarenDuur.toFixed(0)} jaar`; kleur = jarenDuur < 20 ? 'pos-down' : 'pos-up'; }
+    }
+    return `
+    <div class="rebal-row">
+      <div class="rebal-info">
+        <div class="rebal-name">${scenarioLabels[key]}</div>
+        <div class="rebal-sub">kapitaal in ${doeljaar}: ${fmtEUR(kapitaal)}</div>
+      </div>
+      <div class="${kleur}" style="font-weight:700;font-size:13px;text-align:right;white-space:nowrap;">${verdict}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ============ EN DAARNA? ============ */
+function berekenEnDaarna(){
+  const { punten: projPunten, doeljaar } = berekenProjectie();
+  const rendOpname = (parseFloat(document.getElementById('opnameRendement').value) || 0)/100;
+  const band = (parseFloat(document.getElementById('projBand').value) || 0)/100;
+  const opnameGewenst = parseFloat(document.getElementById('opnameGewenst').value) || 0;
+  const NJAREN = 40;
+
+  const scenariosStart = { pess: projPunten.pess[projPunten.pess.length-1], verw: projPunten.verw[projPunten.verw.length-1], opt: projPunten.opt[projPunten.opt.length-1] };
+  const scenariosRendement = { pess: rendOpname-band, verw: rendOpname, opt: rendOpname+band };
+
+  const punten = { pess:[], verw:[], opt:[] };
+  Object.keys(scenariosStart).forEach(key=>{
+    const rMaand = Math.pow(1+scenariosRendement[key], 1/12) - 1;
+    let kapitaal = scenariosStart[key];
+    punten[key].push(kapitaal);
+    for (let jaar=1; jaar<=NJAREN; jaar++){
+      for (let m=0; m<12; m++){
+        kapitaal = kapitaal*(1+rMaand) - opnameGewenst;
+        if (kapitaal < 0) kapitaal = 0;
+      }
+      punten[key].push(kapitaal);
+    }
+  });
+  return { punten, doeljaar, njaren: NJAREN };
+}
+
+function renderEnDaarna(){
+  const container = document.getElementById('endaarnaChart');
+  if (!container) return;
+  const { punten, doeljaar, njaren } = berekenEnDaarna();
+
+  const W=600, H=200, PAD_L=48, PAD_R=10, PAD_T=14, PAD_B=26;
+  const n = njaren+1;
+  const alleWaarden = [...punten.pess, ...punten.verw, ...punten.opt];
+  const maxY = Math.max(...alleWaarden) * 1.05 || 1;
+  const xFn = i => PAD_L + (i/(n-1)) * (W-PAD_L-PAD_R);
+  const yFn = v => (H-PAD_B) - (v/maxY) * (H-PAD_T-PAD_B);
+
+  const lijn = (arr,kleur,dash)=> `<path d="${arr.map((v,i)=>`${i===0?'M':'L'} ${xFn(i).toFixed(1)} ${yFn(v).toFixed(1)}`).join(' ')}" fill="none" stroke="${kleur}" stroke-width="2" ${dash?`stroke-dasharray="${dash}"`:''}/>`;
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;" xmlns="http://www.w3.org/2000/svg">
+      <line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H-PAD_B}" stroke="#2b3542" stroke-width="1"/>
+      <line x1="${PAD_L}" y1="${H-PAD_B}" x2="${W-PAD_R}" y2="${H-PAD_B}" stroke="#2b3542" stroke-width="1"/>
+      <text x="2" y="${PAD_T+8}" fill="#8a97a5" font-size="9">${fmtEURKort(maxY)}</text>
+      <text x="2" y="${H-PAD_B}" fill="#8a97a5" font-size="9">€0</text>
+      <text x="${PAD_L}" y="${H-8}" fill="#8a97a5" font-size="9">${doeljaar}</text>
+      <text x="${W-PAD_R-24}" y="${H-8}" fill="#8a97a5" font-size="9">${doeljaar+njaren}</text>
+      ${lijn(punten.opt,'#4fae8f','3 3')}
+      ${lijn(punten.pess,'#d9736a','3 3')}
+      ${lijn(punten.verw,'#d9a441')}
+    </svg>
+    <div class="proj-legend">
+      <span><i style="background:#d9a441;"></i> Verwacht</span>
+      <span><i style="background:#4fae8f;"></i> Optimistisch</span>
+      <span><i style="background:#d9736a;"></i> Pessimistisch</span>
+    </div>`;
+}
+
+/* ============ OMGEKEERDE DOELCALCULATOR ============ */
+function berekenDoelcalculator(){
+  const { doeljaar, jaren, startWaarde } = berekenProjectie();
+  const rendVerwacht = (parseFloat(document.getElementById('projRendement').value) || 0)/100;
+  const terToggle = document.getElementById('projTERToggle').checked;
+  const ter = terToggle ? berekenGewogenTER()/100 : 0;
+  const rendNetto = rendVerwacht - ter;
+  const inflatie = (parseFloat(document.getElementById('projInflatie').value) || 0)/100;
+  const opnameGewenst = parseFloat(document.getElementById('opnameGewenst').value) || 0;
+  const rendOpname = (parseFloat(document.getElementById('opnameRendement').value) || 0)/100;
+
+  // Reële (inflatie-gecorrigeerde) maandrente tijdens de opnamefase
+  const reeleJaarRenteOpname = (1+rendOpname)/(1+inflatie) - 1;
+  const reeleMaandRenteOpname = Math.pow(1+reeleJaarRenteOpname, 1/12) - 1;
+
+  let benodigdKapitaalVandaag = Infinity;
+  if (reeleMaandRenteOpname > 0) benodigdKapitaalVandaag = opnameGewenst / reeleMaandRenteOpname;
+
+  const benodigdKapitaalNominaal = isFinite(benodigdKapitaalVandaag)
+    ? benodigdKapitaalVandaag * Math.pow(1+inflatie, jaren)
+    : Infinity;
+
+  const rMaandOpbouw = Math.pow(1+rendNetto, 1/12) - 1;
+  const maanden = jaren*12;
+  let benodigdeInleg = null;
+  if (isFinite(benodigdKapitaalNominaal)){
+    const fvStart = startWaarde * Math.pow(1+rMaandOpbouw, maanden);
+    const tekort = benodigdKapitaalNominaal - fvStart;
+    benodigdeInleg = Math.abs(rMaandOpbouw) < 1e-9
+      ? tekort / maanden
+      : tekort * rMaandOpbouw / (Math.pow(1+rMaandOpbouw, maanden)-1);
+  }
+  return { benodigdKapitaalVandaag, benodigdKapitaalNominaal, benodigdeInleg, doeljaar, jaren };
+}
+
+function renderDoelCalculator(){
+  const el = document.getElementById('doelResultaat');
+  if (!el) return;
+  const r = berekenDoelcalculator();
+  if (!isFinite(r.benodigdKapitaalVandaag)){
+    el.innerHTML = `<div class="empty" style="padding:10px 0;">Bij deze rendement/inflatie-combinatie is een eeuwigdurende opname niet haalbaar (rendement tijdens opname ≤ inflatie). Verhoog het rendement tijdens opname of verlaag de inflatie.</div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="grid2">
+      <div class="card" style="padding:12px;">
+        <div class="sub">Nodig kapitaal (geld van vandaag)</div>
+        <div style="font-weight:700;font-size:16px;margin-top:2px;">${fmtEUR(r.benodigdKapitaalVandaag)}</div>
+      </div>
+      <div class="card" style="padding:12px;">
+        <div class="sub">Nodig kapitaal in ${r.doeljaar}</div>
+        <div style="font-weight:700;font-size:16px;margin-top:2px;">${fmtEUR(r.benodigdKapitaalNominaal)}</div>
+      </div>
+      <div class="card full" style="padding:12px;">
+        <div class="sub">Benodigde maandelijkse inleg vanaf nu</div>
+        <div style="font-weight:700;font-size:19px;margin-top:2px;" class="${r.benodigdeInleg<=0?'pos-up':''}">${r.benodigdeInleg<=0 ? 'al op koers — geen extra inleg nodig' : fmtEUR(r.benodigdeInleg)+' /maand'}</div>
+      </div>
+    </div>`;
+}
+
+function renderAlleProjectieKaarten(){
+  renderProjectie();
+  renderOpnameCalculator();
+  renderEnDaarna();
+  renderDoelCalculator();
 }
 
 /* ============ INIT ============ */
@@ -1561,7 +1868,7 @@ function renderAll(){
   }
   renderPosities();
   if (document.getElementById('sec-allocatie').classList.contains('active')) renderAllocatie();
-  if (document.getElementById('sec-groei').classList.contains('active')){ renderWaardeverloop(); renderProjectie(); }
+  if (document.getElementById('sec-groei').classList.contains('active')){ renderWaardeverloop(); renderAlleProjectieKaarten(); }
   if (document.getElementById('sec-rekeningen').classList.contains('active')) renderRekeningen();
 }
 
