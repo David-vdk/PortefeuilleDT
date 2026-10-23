@@ -162,6 +162,7 @@
   .proj-legend span{display:flex;align-items:center;gap:5px;}
   .proj-legend i{width:10px;height:10px;border-radius:2px;display:inline-block;}
   .fund-card{cursor:pointer;}
+  .fire-kaart .sub{font-size:13px;color:var(--muted);}
   .demo-pill{background:var(--surface2);color:var(--accent);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;}
   .demo-pill.actief{background:var(--accent);color:#1a1204;border-color:var(--accent);}
   .detail-back{background:none;border:none;color:var(--accent);font-size:14px;padding:14px 0 6px;cursor:pointer;}
@@ -277,7 +278,7 @@
     </div>
 
     <h2 class="sectiontitel">FIRE-datum</h2>
-    <div class="card full">
+    <div class="card full fire-kaart">
       <div class="sub" style="margin-bottom:12px;line-height:1.5;">
         Vanaf welk jaar kan je financieel onafhankelijk zijn? Je kapitaal (uit de projectie hierboven, met inleg, rendement en TER) moet dan groot genoeg zijn om je gewenste uitgaven te dekken met het percentage dat je jaarlijks afhaalt.
       </div>
@@ -293,8 +294,19 @@
       <div class="sub" style="margin-top:8px;line-height:1.5;">Alle bedragen zijn bruto, vóór belastingen (o.a. meerwaardebelasting bij verkoop, 10% in 2026).</div>
     </div>
 
+    <h2 class="sectiontitel">En daarna?</h2>
+    <div class="card full fire-kaart">
+      <div class="sub" style="margin-bottom:10px;line-height:1.5;">
+        Wat gebeurt er met je kapitaal ná je FIRE-jaar, als je elke maand je gewenste bedrag afhaalt (stijgt mee met de inflatie) en je niet meer bijstort? Getoond in <b>geld van vandaag</b>: vlak = houdbaar, dalend = wordt opgebruikt, stijgend = blijft groeien. Elk scenario start in zijn eigen FIRE-jaar.
+      </div>
+      <div id="endaarnaSamenvatting"></div>
+      <div id="endaarnaChart" style="margin-top:10px;"></div>
+      <div id="endaarnaTooltip" class="verloop-tooltip" style="display:none;"></div>
+      <div class="sub" style="margin-top:8px;line-height:1.5;">Bruto, vóór belastingen (o.a. meerwaardebelasting bij verkoop, 10% in 2026).</div>
+    </div>
+
     <h2 class="sectiontitel">FIRE nu</h2>
-    <div class="card full">
+    <div class="card full fire-kaart">
       <div class="sub" style="margin-bottom:12px;line-height:1.5;">
         Als je vandaag met je huidige portefeuille (incl. cash) op pensioen gaat: hoeveel kan je dan maandelijks gebruiken?
       </div>
@@ -1074,6 +1086,7 @@ async function laadHistoryData(){
 }
 
 function fmtEURKort(n){
+  if (Math.abs(n) >= 1000000) return '€' + (n/1000000).toLocaleString('nl-BE',{maximumFractionDigits:1}) + 'M';
   if (Math.abs(n) >= 1000) return '€' + (n/1000).toFixed(0) + 'k';
   return fmtEUR(n);
 }
@@ -1821,59 +1834,187 @@ function koppelProjSleeplijn(svg, punten, xFn, yFn, PAD_L, PAD_R, VIEWBOX_W, hui
 /* ============ FIRE-DATUM ============ */
 function fmtPctPlain(x){ return x.toLocaleString('nl-BE',{minimumFractionDigits:1,maximumFractionDigits:1}) + '%'; }
 
-function renderFireDatum(){
-  const el = document.getElementById('fireDatumResultaat');
-  if (!el) return;
+const FIRE_MAX_JAREN = 60;
+const FIRE_LABELS = { pess:'Pessimistisch', verw:'Verwacht', opt:'Optimistisch' };
+
+/* Gedeelde FIRE-berekening: per scenario het eerste jaar waarin kapitaal >= (jaarbedrag met inflatie) / percentage */
+function berekenFire(){
   const { startWaarde, inleg, inflatie, scenarios } = leesProjectieParams();
   const gewenstMaand = parseFloat(document.getElementById('fireGewenst').value) || 0;
   const pct = (parseFloat(document.getElementById('fireDatumPct').value) || 0)/100;
-  if (gewenstMaand <= 0 || pct <= 0){
+  if (gewenstMaand <= 0 || pct <= 0) return null;
+  const resultaten = {};
+  ['pess','verw','opt'].forEach(key=>{
+    const reeks = simuleerKapitaal(startWaarde, scenarios[key], inleg, FIRE_MAX_JAREN);
+    let j = -1;
+    for (let i=0; i<=FIRE_MAX_JAREN; i++){
+      if (reeks[i] >= gewenstMaand*12*Math.pow(1+inflatie, i)/pct){ j = i; break; }
+    }
+    resultaten[key] = j === -1 ? null : { j, kap: reeks[j] };
+  });
+  return { gewenstMaand, pct, inflatie, scenarios, resultaten };
+}
+
+function renderFireDatum(){
+  const el = document.getElementById('fireDatumResultaat');
+  if (!el) return;
+  const f = berekenFire();
+  if (!f){
     el.innerHTML = `<div class="sub">Vul een gewenst maandbedrag en een af te halen percentage in.</div>`;
     return;
   }
-  const MAX_JAREN = 60;
   const huidigJaar = new Date().getFullYear();
-  const labels = { pess:'Pessimistisch', verw:'Verwacht', opt:'Optimistisch' };
-
   el.innerHTML = ['pess','verw','opt'].map(key=>{
-    const reeks = simuleerKapitaal(startWaarde, scenarios[key], inleg, MAX_JAREN);
-    let gevonden = -1;
-    for (let j=0; j<=MAX_JAREN; j++){
-      const jaarBedrag = gewenstMaand*12*Math.pow(1+inflatie, j);
-      if (reeks[j] >= jaarBedrag/pct){ gevonden = j; break; }
-    }
-    const rendTxt = fmtPctPlain(scenarios[key]*100) + ' rendement/jaar';
-    if (gevonden === -1){
+    const r = f.resultaten[key];
+    const rendTxt = fmtPctPlain(f.scenarios[key]*100) + ' rendement/jaar';
+    if (!r){
       return `
       <div class="card" style="padding:12px;margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;">
-          <b>${labels[key]}</b><b class="pos-down">niet haalbaar binnen ${MAX_JAREN} jaar</b>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;">
+          <b>${FIRE_LABELS[key]}</b><b class="pos-down" style="text-align:right;">niet haalbaar binnen ${FIRE_MAX_JAREN} jaar</b>
         </div>
         <div class="sub" style="margin-top:4px;">${rendTxt}</div>
       </div>`;
     }
-    const j = gevonden;
-    const factor = Math.pow(1+inflatie, j);
-    const jaarNodig = gewenstMaand*12*factor;
-    const maandNodig = gewenstMaand*factor;
-    const benodigdKap = jaarNodig/pct;
-    const kap = reeks[j];
-    const maandMogelijk = kap*pct/12;
+    const factor = Math.pow(1+f.inflatie, r.j);
+    const jaarNodig = f.gewenstMaand*12*factor;
+    const maandMogelijk = r.kap*f.pct/12;
     return `
     <div class="card" style="padding:12px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;align-items:baseline;">
-        <b>${labels[key]}</b>
-        <b class="pos-up" style="font-size:17px;">${j===0 ? 'nu al' : huidigJaar+j}</b>
+        <b>${FIRE_LABELS[key]}</b>
+        <b class="pos-up" style="font-size:17px;">${r.j===0 ? 'nu al' : huidigJaar+r.j}</b>
       </div>
       <div class="sub" style="margin-top:4px;">${rendTxt}</div>
       <div class="sub" style="margin-top:8px;line-height:1.7;">
-        Kapitaal dan: <b style="color:var(--text);">${fmtEUR(kap)}</b> (nodig: ${fmtEUR(benodigdKap)})<br>
+        Kapitaal dan: <b style="color:var(--text);">${fmtEUR(r.kap)}</b> (nodig: ${fmtEUR(jaarNodig/f.pct)})<br>
         Nodig per jaar: <b style="color:var(--text);">${fmtEUR(jaarNodig)}</b><br>
-        Nodig per maand: <b style="color:var(--text);">${fmtEUR(maandNodig)}</b><br>
-        Af te halen per maand (${fmtPctPlain(pct*100)}): <b style="color:var(--text);">${fmtEUR(maandMogelijk)}</b> = <b style="color:var(--text);">${fmtEUR(maandMogelijk/factor)}</b> in geld van vandaag
+        Nodig per maand: <b style="color:var(--text);">${fmtEUR(f.gewenstMaand*factor)}</b><br>
+        Af te halen per maand (${fmtPctPlain(f.pct*100)}): <b style="color:var(--text);">${fmtEUR(maandMogelijk)}</b> = <b style="color:var(--text);">${fmtEUR(maandMogelijk/factor)}</b> in geld van vandaag
       </div>
     </div>`;
   }).join('');
+}
+
+/* ============ EN DAARNA? (na het FIRE-jaar: afhalen met inflatie, geen inleg meer) ============ */
+const ENDAARNA_JAREN = 40;
+
+function berekenEnDaarna(f){
+  const uit = {};
+  ['pess','verw','opt'].forEach(key=>{
+    const r = f.resultaten[key];
+    if (!r){ uit[key] = null; return; }
+    const rm = Math.pow(1+f.scenarios[key], 1/12) - 1;
+    let kap = r.kap;
+    let leegNa = null;
+    const nominaal = [kap];
+    const reeel = [kap/Math.pow(1+f.inflatie, r.j)];
+    for (let k=1; k<=ENDAARNA_JAREN; k++){
+      if (kap > 0){
+        const maandBedrag = f.gewenstMaand*Math.pow(1+f.inflatie, r.j + k - 1);
+        for (let m=0; m<12; m++){
+          kap = (kap - maandBedrag)*(1+rm);       // eerst afhalen, dan rendement (voorzichtig)
+          if (kap <= 0){ kap = 0; leegNa = (k-1) + (m+1)/12; break; }
+        }
+      }
+      nominaal.push(kap);
+      reeel.push(kap/Math.pow(1+f.inflatie, r.j + k));
+    }
+    uit[key] = { j:r.j, nominaal, reeel, leegNa };
+  });
+  return uit;
+}
+
+function renderEnDaarna(){
+  const chartEl = document.getElementById('endaarnaChart');
+  const sumEl = document.getElementById('endaarnaSamenvatting');
+  const tipEl = document.getElementById('endaarnaTooltip');
+  if (!chartEl) return;
+  const f = berekenFire();
+  if (!f){
+    sumEl.innerHTML = `<div class="sub">Vul bij FIRE-datum een gewenst maandbedrag en percentage in.</div>`;
+    chartEl.innerHTML = ''; tipEl.style.display = 'none';
+    return;
+  }
+  const data = berekenEnDaarna(f);
+  const huidigJaar = new Date().getFullYear();
+  const keys = ['pess','verw','opt'].filter(k=>data[k]);
+  if (keys.length === 0){
+    sumEl.innerHTML = `<div class="sub">Geen enkel scenario haalt FIRE binnen ${FIRE_MAX_JAREN} jaar, dus er is geen "daarna" om te tonen.</div>`;
+    chartEl.innerHTML = ''; tipEl.style.display = 'none';
+    return;
+  }
+
+  // Samenvatting per scenario
+  sumEl.innerHTML = ['pess','verw','opt'].map(key=>{
+    const d = data[key];
+    if (!d) return `<div class="rebal-row"><div class="rebal-info"><div class="rebal-name">${FIRE_LABELS[key]}</div><div class="rebal-sub">geen FIRE binnen ${FIRE_MAX_JAREN} jaar</div></div></div>`;
+    const start = d.reeel[0], eind = d.reeel[ENDAARNA_JAREN];
+    let verdict, kleur;
+    if (d.leegNa !== null){ verdict = `leeg na ±${Math.round(d.leegNa)} jaar`; kleur = 'pos-down'; }
+    else if (eind > start*1.05){ verdict = 'blijft groeien'; kleur = 'pos-up'; }
+    else if (eind >= start*0.95){ verdict = 'blijft ongeveer gelijk'; kleur = 'pos-up'; }
+    else { verdict = `daalt, maar gaat ${ENDAARNA_JAREN}+ jaar mee`; kleur = ''; }
+    return `
+    <div class="rebal-row">
+      <div class="rebal-info">
+        <div class="rebal-name">${FIRE_LABELS[key]} <span style="color:var(--muted);font-weight:400;">· FIRE ${d.j===0?'nu':huidigJaar+d.j}</span></div>
+        <div class="rebal-sub">start ${fmtEUR(start)} → na ${ENDAARNA_JAREN} jaar ${fmtEUR(eind)} (geld van vandaag)</div>
+      </div>
+      <div class="${kleur}" style="font-weight:700;font-size:13px;text-align:right;">${verdict}</div>
+    </div>`;
+  }).join('');
+
+  // Grafiek (geld van vandaag)
+  const W=600, H=210, PAD_L=48, PAD_R=10, PAD_T=14, PAD_B=26;
+  const n = ENDAARNA_JAREN+1;
+  const alle = keys.flatMap(k=>data[k].reeel);
+  const maxY = Math.max(...alle)*1.05 || 1;
+  const xFn = i => PAD_L + (i/(n-1))*(W-PAD_L-PAD_R);
+  const yFn = v => (H-PAD_B) - (v/maxY)*(H-PAD_T-PAD_B);
+  const KLEUR = { pess:'#d9736a', verw:'#d9a441', opt:'#4fae8f' };
+  const lijn = (key)=> `<path d="${data[key].reeel.map((v,i)=>`${i===0?'M':'L'} ${xFn(i).toFixed(1)} ${yFn(v).toFixed(1)}`).join(' ')}" fill="none" stroke="${KLEUR[key]}" stroke-width="${key==='verw'?2.5:2}" ${key==='verw'?'':'stroke-dasharray="3 3"'}/>`;
+
+  chartEl.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" id="endaarnaSvg" style="width:100%;touch-action:none;display:block;cursor:pointer;" xmlns="http://www.w3.org/2000/svg">
+      <line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H-PAD_B}" stroke="#2b3542" stroke-width="1"/>
+      <line x1="${PAD_L}" y1="${H-PAD_B}" x2="${W-PAD_R}" y2="${H-PAD_B}" stroke="#2b3542" stroke-width="1"/>
+      <text x="2" y="${PAD_T+8}" fill="#8a97a5" font-size="9">${fmtEURKort(maxY)}</text>
+      <text x="2" y="${H-PAD_B}" fill="#8a97a5" font-size="9">€0</text>
+      <text x="${PAD_L}" y="${H-8}" fill="#8a97a5" font-size="9">FIRE-jaar</text>
+      <text x="${W-PAD_R-48}" y="${H-8}" fill="#8a97a5" font-size="9">+${ENDAARNA_JAREN} jaar</text>
+      ${keys.map(lijn).join('')}
+      <line id="endaarnaLijn" x1="0" y1="${PAD_T}" x2="0" y2="${H-PAD_B}" stroke="#e9edf1" stroke-width="1" stroke-dasharray="2 2" style="display:none;"/>
+    </svg>
+    <div class="proj-legend">
+      <span><i style="background:#d9a441;"></i> Verwacht</span>
+      <span><i style="background:#4fae8f;"></i> Optimistisch</span>
+      <span><i style="background:#d9736a;"></i> Pessimistisch</span>
+    </div>`;
+
+  const svg = document.getElementById('endaarnaSvg');
+  const lijnEl = document.getElementById('endaarnaLijn');
+  function toon(i){
+    i = Math.max(0, Math.min(n-1, i));
+    const xp = xFn(i);
+    lijnEl.style.display = 'block'; lijnEl.setAttribute('x1', xp); lijnEl.setAttribute('x2', xp);
+    tipEl.style.display = 'block';
+    tipEl.innerHTML = `<div class="vt-datum">${i} jaar na FIRE</div>` + keys.map(key=>{
+      const d = data[key];
+      return `<div style="margin-top:3px;"><span style="color:${KLEUR[key]};font-weight:700;">${FIRE_LABELS[key]}</span> (${huidigJaar+d.j+i}): <b>${fmtEUR(d.reeel[i])}</b> <span class="sub">in geld van vandaag · ${fmtEUR(d.nominaal[i])} nominaal</span></div>`;
+    }).join('');
+  }
+  function xNaarIndex(clientX){
+    const rect = svg.getBoundingClientRect();
+    const relX = (clientX - rect.left)/rect.width*W;
+    return Math.round((relX-PAD_L)/(W-PAD_L-PAD_R)*(n-1));
+  }
+  let bezig = false;
+  svg.onpointerdown = e=>{ bezig=true; toon(xNaarIndex(e.clientX)); svg.setPointerCapture(e.pointerId); };
+  svg.onpointermove = e=>{ if(bezig) toon(xNaarIndex(e.clientX)); };
+  svg.onpointerup = ()=>{ bezig=false; };
+  svg.onpointercancel = ()=>{ bezig=false; };
+  toon(n-1);
 }
 
 /* ============ FIRE NU ============ */
@@ -1908,6 +2049,7 @@ function renderFireNu(){
 function renderAlleProjectieKaarten(){
   renderProjectie();
   renderFireDatum();
+  renderEnDaarna();
   renderFireNu();
 }
 
