@@ -162,6 +162,8 @@
   .proj-legend span{display:flex;align-items:center;gap:5px;}
   .proj-legend i{width:10px;height:10px;border-radius:2px;display:inline-block;}
   .fund-card{cursor:pointer;}
+  .demo-pill{background:var(--surface2);color:var(--accent);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;}
+  .demo-pill.actief{background:var(--accent);color:#1a1204;border-color:var(--accent);}
   .detail-back{background:none;border:none;color:var(--accent);font-size:14px;padding:14px 0 6px;cursor:pointer;}
   .detail-titel{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
   .periode-select{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;}
@@ -177,13 +179,14 @@
       <h1 id="headerTitel">Portefeuille</h1>
       <div class="sub" id="headerSub">—</div>
     </div>
-    <div class="sub" id="headerDatum"></div>
+    <div style="display:flex;align-items:center;gap:10px;"><div class="sub" id="headerDatum"></div><button class="demo-pill" id="btnDemoKop">Demo</button></div>
   </div>
 </header>
 
 <div class="wrap">
   <div id="demoBanner" class="demo-banner" style="display:none; margin:0 16px 14px;">
-    <span>Dit is voorbeelddata. Importeer je eigen bestanden om te starten.</span>
+    <span id="demoBannerTekst">Dit is voorbeelddata. Importeer je eigen bestanden om te starten.</span>
+    <button id="btnStopDemo" style="display:none;">Terug naar mijn portefeuille</button>
   </div>
 </div>
 
@@ -249,8 +252,14 @@
         <label>Bandbreedte (± per jaar)
           <div class="proj-input-row"><input type="number" step="0.1" id="projBand" value="4"><span>%</span></div>
         </label>
-        <label>Maandelijkse inleg
+        <label>Inleg per maand
           <div class="proj-input-row"><span>€</span><input type="number" step="50" id="projInleg" value="0"></div>
+        </label>
+        <label>Inleg per 6 maanden
+          <div class="proj-input-row"><span>€</span><input type="number" step="100" id="projInlegHalfjaar" value="0"></div>
+        </label>
+        <label>Inleg per jaar
+          <div class="proj-input-row"><span>€</span><input type="number" step="100" id="projInlegJaar" value="0"></div>
         </label>
         <label>Doeljaar
           <div class="proj-input-row"><input type="number" step="1" id="projDoeljaar" value="2036"></div>
@@ -267,37 +276,35 @@
       <div id="projectieTooltip" class="verloop-tooltip" style="display:none;"></div>
     </div>
 
-    <h2 class="sectiontitel">Opnamecalculator</h2>
+    <h2 class="sectiontitel">FIRE-datum</h2>
     <div class="card full">
       <div class="sub" style="margin-bottom:12px;line-height:1.5;">
-        Hoeveel kan je maandelijks opnemen vanaf je doeljaar zonder dat je kapitaal op raakt? Op basis van het kapitaal uit de projectie hierboven, per scenario.
+        Vanaf welk jaar kan je financieel onafhankelijk zijn? Je kapitaal (uit de projectie hierboven, met inleg, rendement en TER) moet dan groot genoeg zijn om je gewenste uitgaven te dekken met het percentage dat je jaarlijks afhaalt.
       </div>
       <div class="proj-inputs">
-        <label>Rendement tijdens opname/jaar
-          <div class="proj-input-row"><input type="number" step="0.1" id="opnameRendement" value="4"><span>%</span></div>
+        <label>Gewenst bedrag per maand (huidige waarde)
+          <div class="proj-input-row"><span>€</span><input type="number" step="100" id="fireGewenst" value="10000"></div>
         </label>
-        <label>Gewenste maandelijkse opname
-          <div class="proj-input-row"><span>€</span><input type="number" step="50" id="opnameGewenst" value="2000"></div>
+        <label>Af te halen % van kapitaal per jaar
+          <div class="proj-input-row"><input type="number" step="0.1" id="fireDatumPct" value="4"><span>%</span></div>
         </label>
       </div>
-      <div id="opnameResultaat" style="margin-top:14px;"></div>
+      <div id="fireDatumResultaat" style="margin-top:14px;"></div>
+      <div class="sub" style="margin-top:8px;line-height:1.5;">Alle bedragen zijn bruto, vóór belastingen (o.a. meerwaardebelasting bij verkoop, 10% in 2026).</div>
     </div>
 
-    <h2 class="sectiontitel">En daarna?</h2>
-    <div class="card full">
-      <div class="sub" style="margin-bottom:10px;line-height:1.5;">
-        Verloop van je kapitaal ná je doeljaar, bij de hierboven ingestelde opname. Vlak = houdbaar, dalend = wordt opgebruikt, stijgend = blijft groeien.
-      </div>
-      <div id="endaarnaChart"></div>
-    </div>
-
-    <h2 class="sectiontitel">Omgekeerde doelcalculator</h2>
+    <h2 class="sectiontitel">FIRE nu</h2>
     <div class="card full">
       <div class="sub" style="margin-bottom:12px;line-height:1.5;">
-        Hoeveel kapitaal en maandelijkse inleg heb je nodig om de gewenste opname hierboven (in geld van vandaag) te halen tegen je doeljaar?
+        Als je vandaag met je huidige portefeuille (incl. cash) op pensioen gaat: hoeveel kan je dan maandelijks gebruiken?
       </div>
-      <div id="doelResultaat"></div>
-      <button class="btn secondary small" id="btnPasInlegToe" style="margin-top:12px;width:100%;">Pas nodige inleg toe op projectie</button>
+      <div class="proj-inputs">
+        <label>Af te halen % van kapitaal per jaar
+          <div class="proj-input-row"><input type="number" step="0.1" id="fireNuPct" value="4"><span>%</span></div>
+        </label>
+      </div>
+      <div id="fireNuResultaat" style="margin-top:14px;"></div>
+      <div class="sub" style="margin-top:8px;line-height:1.5;">Bruto, vóór belastingen (o.a. meerwaardebelasting bij verkoop, 10% in 2026).</div>
     </div>
   </div>
 </section>
@@ -344,7 +351,7 @@
         <input type="file" id="fileRestore" accept=".json">
       </div>
       <div style="height:10px;"></div>
-      <button class="btn secondary small" id="btnDemo" style="width:100%;">Toon voorbeelddata</button>
+      <button class="btn secondary small" id="btnDemo" style="width:100%;">Demo-portefeuille (fictief, €80.000 ingelegd)</button>
     </div>
 
     <div class="footer-note">Alle bedragen in EUR · gegevens blijven lokaal op dit toestel</div>
@@ -438,6 +445,8 @@ function kortNaam(naam, isin){
 
 /* ============ STATE ============ */
 let STATE = { transacties:[], demo:false, targets:{} };
+let DEMO_ACTIVE = false;      // true = fictieve demo actief; wordt NOOIT opgeslagen
+let ECHTE_STATE = null;       // bewaart je echte data tijdens de demo
 
 function normKey(k){ return String(k).replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim(); }
 function fmtEUR(n){
@@ -796,6 +805,7 @@ function renderBuySuggesties(){
 
 /* ============ IMPORT HANDLERS ============ */
 function verwerkTransactiesFile(file){
+  if (DEMO_ACTIVE){ toast('Stop eerst de demo om te importeren'); return; }
   const reader = new FileReader();
   reader.onload = (e)=>{
     try{
@@ -820,6 +830,7 @@ function verwerkTransactiesFile(file){
 }
 
 function verwerkPositiesFile(file){
+  if (DEMO_ACTIVE){ toast('Stop eerst de demo om te importeren'); return; }
   const reader = new FileReader();
   reader.onload = (e)=>{
     try{
@@ -853,6 +864,7 @@ function verwerkPositiesFile(file){
 const STORAGE_KEY = 'portefeuille_data_prive';
 
 function bewaarLocaal(){
+  if (DEMO_ACTIVE) return;   // demo raakt je opgeslagen data nooit aan
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); }
   catch(e){ console.error('Opslaan mislukt', e); }
 }
@@ -863,26 +875,75 @@ function laadLocaal(){
   }catch(e){ console.error('Laden mislukt', e); }
 }
 
-/* ============ DEMO DATA ============ */
-function laadDemoData(){
+/* ============ DEMO (fictief, niet-destructief: wordt nooit opgeslagen) ============ */
+/* [maanden geleden, ISIN, doelbedrag, rekening] -- som van de doelbedragen = 80.000 */
+const DEMO_PLAN = [
+  [72,'IE00BF4RFH31',4000,'Rekening 1'],[72,'IE00BL25JM42',4000,'Rekening 2'],
+  [60,'IE00BL25JP72',3000,'Rekening 1'],[60,'IE00BKM4GZ66',1000,'Rekening 3'],
+  [48,'IE00BSPLC413',3000,'Rekening 2'],[48,'IE00BSPLC298',2000,'Rekening 3'],
+  [36,'IE00BF4RFH31',5000,'Rekening 1'],[36,'IE00BL25JM42',5000,'Rekening 2'],[36,'IE00B48X4842',2000,'Rekening 3'],
+  [24,'IE00BL25JP72',6000,'Rekening 1'],[24,'IE00BSPLC413',4000,'Rekening 2'],[24,'IE00BKM4GZ66',2000,'Rekening 3'],[24,'IE00BSPLC298',3000,'Rekening 3'],
+  [12,'IE00BF4RFH31',6000,'Rekening 1'],[12,'IE00BL25JM42',6000,'Rekening 2'],[12,'IE00BL25JP72',4000,'Rekening 1'],[12,'IE00BSPLC413',3000,'Rekening 2'],
+  [6,'IE00B48X4842',3000,'Rekening 3'],[6,'IE00BSPLC298',3000,'Rekening 3'],[6,'IE00BKM4GZ66',2000,'Rekening 3'],[6,'IE00BF4RFH31',4000,'Rekening 1'],[6,'IE00BL25JM42',5000,'Rekening 2'],
+];
+const DEMO_TOTAAL = 80000;
+const DEMO_NOODKOERS = { 'IE00BF4RFH31':6, 'IE00BKM4GZ66':30, 'IE00BSPLC298':45, 'IE00BSPLC413':55, 'IE00B48X4842':105, 'IE00BL25JP72':65, 'IE00BL25JM42':45 };
+
+function bouwDemoTransacties(){
+  const txs = DEMO_PLAN.map(([mnd, isin, doel, rekening])=>{
+    const d = new Date(); d.setMonth(d.getMonth() - mnd);
+    if (d.getDay()===0) d.setDate(d.getDate()-2); else if (d.getDay()===6) d.setDate(d.getDate()-1);
+    const datum = d.toISOString().slice(0,10);
+    // Koers op die datum uit de echte koersgeschiedenis (zodat de grafieken realistisch zijn); anders een noodwaarde
+    let koers = null;
+    const reeks = HISTORY_DATA && HISTORY_DATA[isin];
+    if (reeks){
+      for (let i=reeks.length-1; i>=0; i--){ if (reeks[i].datum <= datum){ koers = reeks[i].koers; break; } }
+    }
+    if (!koers) koers = DEMO_NOODKOERS[isin];
+    const aantal = Math.max(1, Math.round(doel/koers));
+    const bedrag = Math.round(aantal*koers*100)/100;
+    return { datum, naam: ISIN_TICKER[isin].naam, isin, type:'aankoop', aantal, bedrag, prijs: koers,
+             key:`demo|${datum}|${isin}|${rekening}|${aantal}`, rekening };
+  });
+  // Laatste aankoop bijstellen zodat het totaal exact 80.000,00 is
+  const som = txs.slice(0,-1).reduce((s,t)=>s+t.bedrag,0);
+  const laatste = txs[txs.length-1];
+  laatste.bedrag = Math.round((DEMO_TOTAAL - som)*100)/100;
+  laatste.prijs = laatste.bedrag/laatste.aantal;
+  return txs;
+}
+
+function startDemo(){
+  if (DEMO_ACTIVE) return;
+  ECHTE_STATE = STATE;
+  DEMO_ACTIVE = true;
   STATE = {
     demo: true,
-    cash: 1200,
-    laatsteKoersen: { 'IE00BL25JM42': 71.2, 'IE00BL25JP72': 81.4 },
+    cash: 750,
+    laatsteKoersen: Object.assign({}, ECHTE_STATE.laatsteKoersen || {}),
+    koersenDatum: ECHTE_STATE.koersenDatum || null,
     targets: {},
-    transacties: [
-      { datum:'2024-06-14', naam:'XTR.(IE)MSCI WORLD VALUE U.ETF-(FR)', isin:'IE00BL25JM42', type:'aankoop', aantal:120, bedrag:5200, prijs:43.33, key:'demo1' },
-      { datum:'2024-11-03', naam:'XTR MSCI WORLD MOMENTUM ETF 1C-K(FR', isin:'IE00BL25JP72', type:'aankoop', aantal:60, bedrag:3900, prijs:65, key:'demo2' },
-      { datum:'2025-03-20', naam:'XTR.(IE)MSCI WORLD VALUE U.ETF-(FR)', isin:'IE00BL25JM42', type:'aankoop', aantal:80, bedrag:3600, prijs:45, key:'demo3' },
-    ]
+    transacties: bouwDemoTransacties()
   };
-  bewaarLocaal();
   renderAll();
-  toast('Voorbeelddata geladen');
+  toast('Demo gestart — je echte data blijft onaangeroerd');
 }
+
+function stopDemo(){
+  if (!DEMO_ACTIVE) return;
+  STATE = ECHTE_STATE;
+  ECHTE_STATE = null;
+  DEMO_ACTIVE = false;
+  renderAll();
+  toast('Terug bij je echte portefeuille');
+}
+
+function wisselDemo(){ DEMO_ACTIVE ? stopDemo() : startDemo(); }
 
 /* ============ BACKUP / RESTORE ============ */
 document.getElementById('btnExport').addEventListener('click', ()=>{
+  if (DEMO_ACTIVE){ toast('Stop eerst de demo om een back-up te maken'); return; }
   const blob = new Blob([JSON.stringify(STATE, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -892,6 +953,7 @@ document.getElementById('btnExport').addEventListener('click', ()=>{
 });
 document.getElementById('fileRestore').addEventListener('change', (e)=>{
   const file = e.target.files[0]; if (!file) return;
+  if (DEMO_ACTIVE){ toast('Stop eerst de demo om te herstellen'); e.target.value=''; return; }
   const reader = new FileReader();
   reader.onload = (ev)=>{
     try{
@@ -902,7 +964,9 @@ document.getElementById('fileRestore').addEventListener('change', (e)=>{
   };
   reader.readAsText(file);
 });
-document.getElementById('btnDemo').addEventListener('click', laadDemoData);
+document.getElementById('btnDemo').addEventListener('click', wisselDemo);
+document.getElementById('btnDemoKop').addEventListener('click', wisselDemo);
+document.getElementById('btnStopDemo').addEventListener('click', stopDemo);
 
 /* ============ NAV ============ */
 function wisselTab(naam){
@@ -920,20 +984,10 @@ document.querySelectorAll('.tab, .navbtn').forEach(el=>{
 
 document.getElementById('projDoeljaar').value = new Date().getFullYear() + 10;
 
-['projRendement','projBand','projInleg','projDoeljaar','projInflatie','opnameRendement','opnameGewenst'].forEach(id=>{
+['projRendement','projBand','projInleg','projInlegHalfjaar','projInlegJaar','projDoeljaar','projInflatie','fireGewenst','fireDatumPct','fireNuPct'].forEach(id=>{
   document.getElementById(id).addEventListener('input', renderAlleProjectieKaarten);
 });
 document.getElementById('projTERToggle').addEventListener('change', renderAlleProjectieKaarten);
-document.getElementById('btnPasInlegToe').addEventListener('click', ()=>{
-  const r = berekenDoelcalculator();
-  if (isFinite(r.benodigdeInleg) && r.benodigdeInleg>0){
-    document.getElementById('projInleg').value = Math.round(r.benodigdeInleg);
-    renderAlleProjectieKaarten();
-    toast('Maandelijkse inleg toegepast op projectie');
-  } else {
-    toast('Geen extra inleg nodig — je zit al op koers');
-  }
-});
 
 document.getElementById('detailBack').addEventListener('click', sluitFondsDetail);
 
@@ -1163,6 +1217,51 @@ function berekenBenchmarkReeks(datums){
   return waarden;
 }
 
+/* ============ RENDEMENT MSCI WORLD (zelfde periode als je portefeuille) ============ */
+function benchmarkKoersOp(datum){
+  const r = HISTORY_DATA && HISTORY_DATA[BENCHMARK_ISIN];
+  if (!r || r.length===0) return null;
+  let lo=0, hi=r.length-1, res=null;
+  while(lo<=hi){
+    const mid=(lo+hi)>>1;
+    if (r[mid].datum <= datum){ res = r[mid].koers; lo=mid+1; } else hi=mid-1;
+  }
+  return res;
+}
+
+function berekenBenchmarkJaarlijks(periodeKey, volledigeReeks){
+  const alleDatums = volledigeReeks.datums;
+  const gekozen = filterOpPeriode(alleDatums, periodeKey);
+  const startDatum = gekozen[0];
+  const eindDatum = alleDatums[alleDatums.length-1];
+  if (new Date(eindDatum) - new Date(startDatum) < 30*86400000) return null;
+
+  // a) Kaal jaarrendement van de index zelf (onafhankelijk van jouw stortingen)
+  const k0 = benchmarkKoersOp(startDatum), k1 = benchmarkKoersOp(eindDatum);
+  let kaal = null;
+  if (k0 && k1){
+    const jaren = (new Date(eindDatum) - new Date(startDatum))/86400000/365;
+    kaal = Math.pow(k1/k0, 1/jaren) - 1;
+  }
+
+  // b) MSCI World met exact dezelfde stortingen (geldgewogen, zoals je portefeuille)
+  let metStortingen = null;
+  const waarden = berekenBenchmarkReeks(alleDatums);
+  const idxStart = alleDatums.indexOf(startDatum);
+  if (waarden && waarden[idxStart] !== null && waarden[waarden.length-1] !== null){
+    const cashflows = [{datum:startDatum, bedrag:-waarden[idxStart]}];
+    STATE.transacties.forEach(t=>{
+      if (t.datum > startDatum && t.datum <= eindDatum){
+        cashflows.push({datum:t.datum, bedrag: t.type==='aankoop' ? -t.bedrag : t.bedrag});
+      }
+    });
+    cashflows.push({datum:eindDatum, bedrag: waarden[waarden.length-1]});
+    cashflows.sort((a,b)=> a.datum.localeCompare(b.datum));
+    metStortingen = xirr(cashflows);
+  }
+  return { kaal, metStortingen };
+}
+
 function renderWaardeverloop(){
 
   const container = document.getElementById('waardeverloopChart');
@@ -1280,9 +1379,18 @@ function renderWaardeverloop(){
   const samenvattingEl = document.getElementById('groeiSamenvatting');
   const toonJaarlijks = ['1j','5j','max'].includes(WAARDEVERLOOP_PERIODE);
   const jaarlijksRendement = toonJaarlijks ? berekenGemJaarlijksRendement(WAARDEVERLOOP_PERIODE, volledigeReeks) : null;
-  const jaarlijksHTML = (jaarlijksRendement !== null)
-    ? `<div class="sub" style="margin-top:8px;">Gemiddeld jaarlijks rendement <span style="opacity:0.7;">(geldgewogen, o.b.v. tijdstip van je stortingen)</span>: <span class="${jaarlijksRendement>=0?'pos-up':'pos-down'}" style="font-weight:700;">${fmtPct(jaarlijksRendement*100)}</span></div>`
-    : '';
+  const benchJaarlijks = (toonJaarlijks && TOON_BENCHMARK) ? berekenBenchmarkJaarlijks(WAARDEVERLOOP_PERIODE, volledigeReeks) : null;
+  let jaarlijksHTML = '';
+  if (jaarlijksRendement !== null){
+    jaarlijksHTML = `<div class="sub" style="margin-top:8px;">Gemiddeld jaarlijks rendement <span style="opacity:0.7;">(geldgewogen, o.b.v. tijdstip van je stortingen)</span>: <span class="${jaarlijksRendement>=0?'pos-up':'pos-down'}" style="font-weight:700;">${fmtPct(jaarlijksRendement*100)}</span></div>`;
+    if (benchJaarlijks && benchJaarlijks.metStortingen !== null){
+      const verschil = (jaarlijksRendement - benchJaarlijks.metStortingen)*100;
+      jaarlijksHTML += `<div class="sub" style="margin-top:4px;">${BENCHMARK_NAAM} met jouw stortingen: <span class="${benchJaarlijks.metStortingen>=0?'pos-up':'pos-down'}" style="font-weight:700;">${fmtPct(benchJaarlijks.metStortingen*100)}</span> · jij ligt <span class="${verschil>=0?'pos-up':'pos-down'}">${verschil>=0?'+':''}${verschil.toLocaleString('nl-BE',{minimumFractionDigits:2,maximumFractionDigits:2})} procentpunt ${verschil>=0?'hoger':'lager'}</span></div>`;
+    }
+    if (benchJaarlijks && benchJaarlijks.kaal !== null){
+      jaarlijksHTML += `<div class="sub" style="margin-top:4px;">${BENCHMARK_NAAM} zelf, los van je stortingen: <span class="${benchJaarlijks.kaal>=0?'pos-up':'pos-down'}" style="font-weight:700;">${fmtPct(benchJaarlijks.kaal*100)}</span> per jaar</div>`;
+    }
+  }
 
   if (WAARDEVERLOOP_PERIODE === 'max'){
     const winst = periodeEindWaarde - periodeEindIngelegd;
@@ -1568,42 +1676,66 @@ function koppelDetailSleeplijn(svg, punten, xFn, yFn, PAD_L, PAD_R, VIEWBOX_W){
 }
 
 /* ============ PROJECTIE ============ */
-function berekenProjectie(){
+function leesProjectieParams(){
   const posities = berekenPosities();
-  const totWaarde = posities.reduce((s,p)=>s+p.huidigeWaarde,0) + (STATE.cash||0);
+  const startWaarde = posities.reduce((s,p)=>s+p.huidigeWaarde,0) + (STATE.cash||0);
   const rendVerwacht = (parseFloat(document.getElementById('projRendement').value) || 0)/100;
   const band = (parseFloat(document.getElementById('projBand').value) || 0)/100;
-  const maandInleg = parseFloat(document.getElementById('projInleg').value) || 0;
+  const inleg = {
+    maand: parseFloat(document.getElementById('projInleg').value) || 0,
+    halfjaar: parseFloat(document.getElementById('projInlegHalfjaar').value) || 0,
+    jaar: parseFloat(document.getElementById('projInlegJaar').value) || 0,
+  };
+  const inflatie = (parseFloat(document.getElementById('projInflatie').value) || 0)/100;
+  const terToggle = document.getElementById('projTERToggle').checked;
+  const terPct = terToggle ? berekenGewogenTER() : 0;
+  const terEl = document.getElementById('projTERWeergave');
+  if (terEl) terEl.textContent = terPct>0 ? `(gewogen TER: ${terPct.toFixed(2).replace('.',',')}%/jaar)` : '';
+  const ter = terPct/100;
+  const scenarios = { pess: rendVerwacht-band-ter, verw: rendVerwacht-ter, opt: rendVerwacht+band-ter };
+  return { startWaarde, inleg, inflatie, scenarios };
+}
+
+/* Maand-voor-maand simulatie; inleg komt aan het einde van de maand binnen
+   (halfjaarlijks: maand 6 en 12, jaarlijks: maand 12). Geeft de waarde op elk jaareinde terug. */
+function simuleerKapitaal(startWaarde, jaarRendement, inleg, jaren){
+  const rMaand = Math.pow(1+jaarRendement, 1/12) - 1;
+  const reeks = [Math.max(0,startWaarde)];
+  let kap = startWaarde;
+  for (let m=1; m<=jaren*12; m++){
+    kap = kap*(1+rMaand) + inleg.maand;
+    if (m%6===0) kap += inleg.halfjaar;
+    if (m%12===0) kap += inleg.jaar;
+    if (m%12===0) reeks.push(Math.max(0,kap));
+  }
+  return reeks;
+}
+
+function inlegTekst(inleg){
+  const delen = [];
+  if (inleg.maand>0) delen.push(`${fmtEUR(inleg.maand)}/maand`);
+  if (inleg.halfjaar>0) delen.push(`${fmtEUR(inleg.halfjaar)}/6 maanden`);
+  if (inleg.jaar>0) delen.push(`${fmtEUR(inleg.jaar)}/jaar`);
+  return delen.join(' + ');
+}
+
+function berekenProjectie(){
+  const { startWaarde, inleg, inflatie, scenarios } = leesProjectieParams();
   const huidigJaar = new Date().getFullYear();
   const doeljaar = Math.max(huidigJaar+1, parseInt(document.getElementById('projDoeljaar').value) || huidigJaar+10);
   const jaren = doeljaar - huidigJaar;
-
-  const terToggle = document.getElementById('projTERToggle').checked;
-  const terPct = terToggle ? berekenGewogenTER() : 0;
-  const ter = terPct/100;
-  const terEl = document.getElementById('projTERWeergave');
-  if (terEl) terEl.textContent = terPct>0 ? `(gewogen TER: ${terPct.toFixed(2).replace('.',',')}%/jaar)` : '';
-
-  const scenarios = { pess: rendVerwacht-band-ter, verw: rendVerwacht-ter, opt: rendVerwacht+band-ter };
-  const punten = { pess:[], verw:[], opt:[] };
-
-  Object.keys(scenarios).forEach(key=>{
-    const rMaand = Math.pow(1+scenarios[key], 1/12) - 1;
-    for (let jaar=0; jaar<=jaren; jaar++){
-      const maanden = jaar*12;
-      let fv;
-      if (Math.abs(rMaand) < 1e-9) fv = totWaarde + maandInleg*maanden;
-      else fv = totWaarde*Math.pow(1+rMaand,maanden) + maandInleg*((Math.pow(1+rMaand,maanden)-1)/rMaand);
-      punten[key].push(Math.max(0,fv));
-    }
-  });
-  return { punten, jaren, doeljaar, huidigJaar, startWaarde: totWaarde, scenarios };
+  const punten = {
+    pess: simuleerKapitaal(startWaarde, scenarios.pess, inleg, jaren),
+    verw: simuleerKapitaal(startWaarde, scenarios.verw, inleg, jaren),
+    opt:  simuleerKapitaal(startWaarde, scenarios.opt,  inleg, jaren),
+  };
+  return { punten, jaren, doeljaar, huidigJaar, startWaarde, scenarios, inleg, inflatie };
 }
 
 function renderProjectie(){
   const container = document.getElementById('projectieChart');
   if (!container) return;
-  const { punten, jaren, doeljaar, huidigJaar, startWaarde } = berekenProjectie();
+  const { punten, jaren, doeljaar, huidigJaar, startWaarde, inleg } = berekenProjectie();
 
   const W=600, H=240, PAD_L=48, PAD_R=10, PAD_T=14, PAD_B=26;
   const n = jaren+1;
@@ -1641,7 +1773,7 @@ function renderProjectie(){
       <span style="opacity:0.7;">Optimistisch: ${fmtEUR(eindOpt)}</span>
       <span style="opacity:0.7;">Pessimistisch: ${fmtEUR(eindPess)}</span>
     </div>
-    <div class="sub" style="margin-top:8px;">Startpunt: ${fmtEUR(startWaarde)} vandaag${document.getElementById('projInleg').value>0 ? ` + € ${document.getElementById('projInleg').value}/maand` : ''} · tik op de grafiek voor een jaar in geld van vandaag</div>`;
+    <div class="sub" style="margin-top:8px;">Startpunt: ${fmtEUR(startWaarde)} vandaag${inlegTekst(inleg) ? ' + ' + inlegTekst(inleg) : ''} · tik op de grafiek voor een jaar in geld van vandaag</div>`;
 
   koppelProjSleeplijn(document.getElementById('projSvg'), punten, xFn, yFn, PAD_L, PAD_R, W, huidigJaar);
 }
@@ -1686,179 +1818,106 @@ function koppelProjSleeplijn(svg, punten, xFn, yFn, PAD_L, PAD_R, VIEWBOX_W, hui
   toon(n-1);
 }
 
-/* ============ OPNAMECALCULATOR ============ */
-function annuiteitDuur(kapitaal, maandelijkseOpname, maandRente){
-  // Aantal maanden dat kapitaal meegaat bij vaste maandelijkse opname.
-  // Infinity = opname is kleiner dan (of gelijk aan) de rente-opbrengst -> kapitaal blijft behouden.
-  if (kapitaal <= 0) return 0;
-  if (maandelijkseOpname <= 0) return Infinity;
-  if (maandRente <= 0) return kapitaal / maandelijkseOpname;
-  if (maandelijkseOpname <= kapitaal * maandRente) return Infinity;
-  const teller = Math.log(1 - (kapitaal*maandRente)/maandelijkseOpname);
-  const noemer = Math.log(1+maandRente);
-  return -teller/noemer;
-}
+/* ============ FIRE-DATUM ============ */
+function fmtPctPlain(x){ return x.toLocaleString('nl-BE',{minimumFractionDigits:1,maximumFractionDigits:1}) + '%'; }
 
-function renderOpnameCalculator(){
-  const el = document.getElementById('opnameResultaat');
+function renderFireDatum(){
+  const el = document.getElementById('fireDatumResultaat');
   if (!el) return;
-  const { punten, doeljaar } = berekenProjectie();
-  const rendOpname = (parseFloat(document.getElementById('opnameRendement').value) || 0)/100;
-  const opnameGewenst = parseFloat(document.getElementById('opnameGewenst').value) || 0;
-  const rMaand = Math.pow(1+rendOpname, 1/12) - 1;
+  const { startWaarde, inleg, inflatie, scenarios } = leesProjectieParams();
+  const gewenstMaand = parseFloat(document.getElementById('fireGewenst').value) || 0;
+  const pct = (parseFloat(document.getElementById('fireDatumPct').value) || 0)/100;
+  if (gewenstMaand <= 0 || pct <= 0){
+    el.innerHTML = `<div class="sub">Vul een gewenst maandbedrag en een af te halen percentage in.</div>`;
+    return;
+  }
+  const MAX_JAREN = 60;
+  const huidigJaar = new Date().getFullYear();
+  const labels = { pess:'Pessimistisch', verw:'Verwacht', opt:'Optimistisch' };
 
-  const scenarioLabels = { pess:'Pessimistisch', verw:'Verwacht', opt:'Optimistisch' };
   el.innerHTML = ['pess','verw','opt'].map(key=>{
-    const kapitaal = punten[key][punten[key].length-1];
-    const maanden = annuiteitDuur(kapitaal, opnameGewenst, rMaand);
-    let verdict, kleur;
-    if (maanden === Infinity){ verdict='blijft behouden'; kleur='pos-up'; }
-    else {
-      const jarenDuur = maanden/12;
-      if (jarenDuur > 100){ verdict='gaat >100 jaar mee'; kleur='pos-up'; }
-      else { verdict=`leeg na ±${jarenDuur.toFixed(0)} jaar`; kleur = jarenDuur < 20 ? 'pos-down' : 'pos-up'; }
+    const reeks = simuleerKapitaal(startWaarde, scenarios[key], inleg, MAX_JAREN);
+    let gevonden = -1;
+    for (let j=0; j<=MAX_JAREN; j++){
+      const jaarBedrag = gewenstMaand*12*Math.pow(1+inflatie, j);
+      if (reeks[j] >= jaarBedrag/pct){ gevonden = j; break; }
     }
+    const rendTxt = fmtPctPlain(scenarios[key]*100) + ' rendement/jaar';
+    if (gevonden === -1){
+      return `
+      <div class="card" style="padding:12px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+          <b>${labels[key]}</b><b class="pos-down">niet haalbaar binnen ${MAX_JAREN} jaar</b>
+        </div>
+        <div class="sub" style="margin-top:4px;">${rendTxt}</div>
+      </div>`;
+    }
+    const j = gevonden;
+    const factor = Math.pow(1+inflatie, j);
+    const jaarNodig = gewenstMaand*12*factor;
+    const maandNodig = gewenstMaand*factor;
+    const benodigdKap = jaarNodig/pct;
+    const kap = reeks[j];
+    const maandMogelijk = kap*pct/12;
     return `
-    <div class="rebal-row">
-      <div class="rebal-info">
-        <div class="rebal-name">${scenarioLabels[key]}</div>
-        <div class="rebal-sub">kapitaal in ${doeljaar}: ${fmtEUR(kapitaal)}</div>
+    <div class="card" style="padding:12px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;">
+        <b>${labels[key]}</b>
+        <b class="pos-up" style="font-size:17px;">${j===0 ? 'nu al' : huidigJaar+j}</b>
       </div>
-      <div class="${kleur}" style="font-weight:700;font-size:13px;text-align:right;white-space:nowrap;">${verdict}</div>
+      <div class="sub" style="margin-top:4px;">${rendTxt}</div>
+      <div class="sub" style="margin-top:8px;line-height:1.7;">
+        Kapitaal dan: <b style="color:var(--text);">${fmtEUR(kap)}</b> (nodig: ${fmtEUR(benodigdKap)})<br>
+        Nodig per jaar: <b style="color:var(--text);">${fmtEUR(jaarNodig)}</b><br>
+        Nodig per maand: <b style="color:var(--text);">${fmtEUR(maandNodig)}</b><br>
+        Af te halen per maand (${fmtPctPlain(pct*100)}): <b style="color:var(--text);">${fmtEUR(maandMogelijk)}</b> = <b style="color:var(--text);">${fmtEUR(maandMogelijk/factor)}</b> in geld van vandaag
+      </div>
     </div>`;
   }).join('');
 }
 
-/* ============ EN DAARNA? ============ */
-function berekenEnDaarna(){
-  const { punten: projPunten, doeljaar } = berekenProjectie();
-  const rendOpname = (parseFloat(document.getElementById('opnameRendement').value) || 0)/100;
-  const band = (parseFloat(document.getElementById('projBand').value) || 0)/100;
-  const opnameGewenst = parseFloat(document.getElementById('opnameGewenst').value) || 0;
-  const NJAREN = 40;
-
-  const scenariosStart = { pess: projPunten.pess[projPunten.pess.length-1], verw: projPunten.verw[projPunten.verw.length-1], opt: projPunten.opt[projPunten.opt.length-1] };
-  const scenariosRendement = { pess: rendOpname-band, verw: rendOpname, opt: rendOpname+band };
-
-  const punten = { pess:[], verw:[], opt:[] };
-  Object.keys(scenariosStart).forEach(key=>{
-    const rMaand = Math.pow(1+scenariosRendement[key], 1/12) - 1;
-    let kapitaal = scenariosStart[key];
-    punten[key].push(kapitaal);
-    for (let jaar=1; jaar<=NJAREN; jaar++){
-      for (let m=0; m<12; m++){
-        kapitaal = kapitaal*(1+rMaand) - opnameGewenst;
-        if (kapitaal < 0) kapitaal = 0;
-      }
-      punten[key].push(kapitaal);
-    }
-  });
-  return { punten, doeljaar, njaren: NJAREN };
-}
-
-function renderEnDaarna(){
-  const container = document.getElementById('endaarnaChart');
-  if (!container) return;
-  const { punten, doeljaar, njaren } = berekenEnDaarna();
-
-  const W=600, H=200, PAD_L=48, PAD_R=10, PAD_T=14, PAD_B=26;
-  const n = njaren+1;
-  const alleWaarden = [...punten.pess, ...punten.verw, ...punten.opt];
-  const maxY = Math.max(...alleWaarden) * 1.05 || 1;
-  const xFn = i => PAD_L + (i/(n-1)) * (W-PAD_L-PAD_R);
-  const yFn = v => (H-PAD_B) - (v/maxY) * (H-PAD_T-PAD_B);
-
-  const lijn = (arr,kleur,dash)=> `<path d="${arr.map((v,i)=>`${i===0?'M':'L'} ${xFn(i).toFixed(1)} ${yFn(v).toFixed(1)}`).join(' ')}" fill="none" stroke="${kleur}" stroke-width="2" ${dash?`stroke-dasharray="${dash}"`:''}/>`;
-
-  container.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;" xmlns="http://www.w3.org/2000/svg">
-      <line x1="${PAD_L}" y1="${PAD_T}" x2="${PAD_L}" y2="${H-PAD_B}" stroke="#2b3542" stroke-width="1"/>
-      <line x1="${PAD_L}" y1="${H-PAD_B}" x2="${W-PAD_R}" y2="${H-PAD_B}" stroke="#2b3542" stroke-width="1"/>
-      <text x="2" y="${PAD_T+8}" fill="#8a97a5" font-size="9">${fmtEURKort(maxY)}</text>
-      <text x="2" y="${H-PAD_B}" fill="#8a97a5" font-size="9">€0</text>
-      <text x="${PAD_L}" y="${H-8}" fill="#8a97a5" font-size="9">${doeljaar}</text>
-      <text x="${W-PAD_R-24}" y="${H-8}" fill="#8a97a5" font-size="9">${doeljaar+njaren}</text>
-      ${lijn(punten.opt,'#4fae8f','3 3')}
-      ${lijn(punten.pess,'#d9736a','3 3')}
-      ${lijn(punten.verw,'#d9a441')}
-    </svg>
-    <div class="proj-legend">
-      <span><i style="background:#d9a441;"></i> Verwacht</span>
-      <span><i style="background:#4fae8f;"></i> Optimistisch</span>
-      <span><i style="background:#d9736a;"></i> Pessimistisch</span>
-    </div>`;
-}
-
-/* ============ OMGEKEERDE DOELCALCULATOR ============ */
-function berekenDoelcalculator(){
-  const { doeljaar, jaren, startWaarde } = berekenProjectie();
-  const rendVerwacht = (parseFloat(document.getElementById('projRendement').value) || 0)/100;
-  const terToggle = document.getElementById('projTERToggle').checked;
-  const ter = terToggle ? berekenGewogenTER()/100 : 0;
-  const rendNetto = rendVerwacht - ter;
-  const inflatie = (parseFloat(document.getElementById('projInflatie').value) || 0)/100;
-  const opnameGewenst = parseFloat(document.getElementById('opnameGewenst').value) || 0;
-  const rendOpname = (parseFloat(document.getElementById('opnameRendement').value) || 0)/100;
-
-  // Reële (inflatie-gecorrigeerde) maandrente tijdens de opnamefase
-  const reeleJaarRenteOpname = (1+rendOpname)/(1+inflatie) - 1;
-  const reeleMaandRenteOpname = Math.pow(1+reeleJaarRenteOpname, 1/12) - 1;
-
-  let benodigdKapitaalVandaag = Infinity;
-  if (reeleMaandRenteOpname > 0) benodigdKapitaalVandaag = opnameGewenst / reeleMaandRenteOpname;
-
-  const benodigdKapitaalNominaal = isFinite(benodigdKapitaalVandaag)
-    ? benodigdKapitaalVandaag * Math.pow(1+inflatie, jaren)
-    : Infinity;
-
-  const rMaandOpbouw = Math.pow(1+rendNetto, 1/12) - 1;
-  const maanden = jaren*12;
-  let benodigdeInleg = null;
-  if (isFinite(benodigdKapitaalNominaal)){
-    const fvStart = startWaarde * Math.pow(1+rMaandOpbouw, maanden);
-    const tekort = benodigdKapitaalNominaal - fvStart;
-    benodigdeInleg = Math.abs(rMaandOpbouw) < 1e-9
-      ? tekort / maanden
-      : tekort * rMaandOpbouw / (Math.pow(1+rMaandOpbouw, maanden)-1);
-  }
-  return { benodigdKapitaalVandaag, benodigdKapitaalNominaal, benodigdeInleg, doeljaar, jaren };
-}
-
-function renderDoelCalculator(){
-  const el = document.getElementById('doelResultaat');
+/* ============ FIRE NU ============ */
+function renderFireNu(){
+  const el = document.getElementById('fireNuResultaat');
   if (!el) return;
-  const r = berekenDoelcalculator();
-  if (!isFinite(r.benodigdKapitaalVandaag)){
-    el.innerHTML = `<div class="empty" style="padding:10px 0;">Bij deze rendement/inflatie-combinatie is een eeuwigdurende opname niet haalbaar (rendement tijdens opname ≤ inflatie). Verhoog het rendement tijdens opname of verlaag de inflatie.</div>`;
+  const posities = berekenPosities();
+  const kapitaal = posities.reduce((s,p)=>s+p.huidigeWaarde,0) + (STATE.cash||0);
+  const pct = (parseFloat(document.getElementById('fireNuPct').value) || 0)/100;
+  if (pct <= 0 || kapitaal <= 0){
+    el.innerHTML = `<div class="sub">Vul een af te halen percentage in.</div>`;
     return;
   }
+  const jaar = kapitaal*pct;
   el.innerHTML = `
     <div class="grid2">
       <div class="card" style="padding:12px;">
-        <div class="sub">Nodig kapitaal (geld van vandaag)</div>
-        <div style="font-weight:700;font-size:16px;margin-top:2px;">${fmtEUR(r.benodigdKapitaalVandaag)}</div>
+        <div class="sub">Huidige portefeuille</div>
+        <div style="font-weight:700;font-size:16px;margin-top:2px;">${fmtEUR(kapitaal)}</div>
       </div>
       <div class="card" style="padding:12px;">
-        <div class="sub">Nodig kapitaal in ${r.doeljaar}</div>
-        <div style="font-weight:700;font-size:16px;margin-top:2px;">${fmtEUR(r.benodigdKapitaalNominaal)}</div>
+        <div class="sub">Per jaar (${fmtPctPlain(pct*100)})</div>
+        <div style="font-weight:700;font-size:16px;margin-top:2px;">${fmtEUR(jaar)}</div>
       </div>
       <div class="card full" style="padding:12px;">
-        <div class="sub">Benodigde maandelijkse inleg vanaf nu</div>
-        <div style="font-weight:700;font-size:19px;margin-top:2px;" class="${r.benodigdeInleg<=0?'pos-up':''}">${r.benodigdeInleg<=0 ? 'al op koers — geen extra inleg nodig' : fmtEUR(r.benodigdeInleg)+' /maand'}</div>
+        <div class="sub">Per maand beschikbaar</div>
+        <div class="pos-up" style="font-weight:700;font-size:19px;margin-top:2px;">${fmtEUR(jaar/12)}</div>
       </div>
     </div>`;
 }
 
 function renderAlleProjectieKaarten(){
   renderProjectie();
-  renderOpnameCalculator();
-  renderEnDaarna();
-  renderDoelCalculator();
+  renderFireDatum();
+  renderFireNu();
 }
 
 /* ============ INIT ============ */
 function renderAll(){
   document.getElementById('demoBanner').style.display = STATE.demo ? 'flex' : 'none';
+  document.getElementById('demoBannerTekst').textContent = DEMO_ACTIVE ? 'Demo met fictieve bedragen. Je echte portefeuille blijft onaangeroerd.' : 'Dit is voorbeelddata. Importeer je eigen bestanden om te starten.';
+  document.getElementById('btnStopDemo').style.display = DEMO_ACTIVE ? '' : 'none';
+  document.getElementById('btnDemoKop').textContent = DEMO_ACTIVE ? 'Stop demo' : 'Demo';
+  document.getElementById('btnDemoKop').classList.toggle('actief', DEMO_ACTIVE);
   document.getElementById('headerSub').textContent = STATE.demo ? 'Voorbeelddata' : (STATE.transacties.length ? `${STATE.transacties.length} transacties` : 'Nog niet geïmporteerd');
   if (STATE.koersenDatum){
     const d = new Date(STATE.koersenDatum);
