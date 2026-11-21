@@ -2,50 +2,50 @@
   "IE00BF4RFH31": {
     "ticker": "IUSN.DE",
     "naam": "iShares MSCI World Small Cap",
-    "koers": 8.776,
+    "koers": 8.728,
     "datum": "2026-11-20"
   },
   "IE00BKM4GZ66": {
     "ticker": "EMIM.AS",
     "naam": "iShares Core MSCI EM IMI",
-    "koers": 41.455,
+    "koers": 40.95,
     "datum": "2026-11-20"
   },
   "IE00BSPLC298": {
     "ticker": "ZPRX.DE",
     "naam": "SPDR MSCI Europe Small Cap Value",
-    "koers": 68.7,
+    "koers": 68.43,
     "datum": "2026-11-20"
   },
   "IE00BSPLC413": {
     "ticker": "ZPRV.DE",
     "naam": "SPDR MSCI USA Small Cap Value",
-    "koers": 81.1,
+    "koers": 81.0,
     "datum": "2026-11-20"
   },
   "IE00B48X4842": {
     "ticker": "SPYX.DE",
     "naam": "SPDR MSCI EM Small Cap",
-    "koers": 118.8,
+    "koers": 118.24,
     "datum": "2026-11-20"
   },
   "IE00BL25JP72": {
     "ticker": "XDEM.DE",
     "naam": "Xtrackers MSCI World Momentum",
-    "koers": 73.64,
+    "koers": 72.45,
     "datum": "2026-11-20"
   },
   "IE00BL25JM42": {
     "ticker": "XDEV.DE",
     "naam": "Xtrackers MSCI World Value",
-    "koers": 67.96,
+    "koers": 67.17,
     "datum": "2026-11-20"
   },
-  "_bijgewerkt_op": "2026-11-20T14:12:45.207821+00:00",
+  "_bijgewerkt_op": "2026-11-21T13:37:13.709358+00:00",
   "IE00B4L5Y983": {
     "ticker": "IWDA.AS",
     "naam": "iShares Core MSCI World (referentie)",
-    "koers": 123.51,
+    "koers": 122.71,
     "datum": "2026-11-20"
   }
 }
